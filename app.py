@@ -1,0 +1,183 @@
+import pandas as pd
+import streamlit as st
+from io import BytesIO
+
+# Function to process the uploaded file and generate the result DataFrame
+
+
+def process_excel(file):
+
+    pd.set_option('display.max_rows', None)
+
+    filename = "Test Model for TV.xlsx"
+
+    # Extracts case number into a list
+    number_cases = pd.read_excel(
+        filename,
+        sheet_name="Loads - Load Case Titles",
+        usecols="A",
+        header=1,
+        skiprows=[2]
+    )
+
+    case_list = []
+    for index, row in number_cases.iterrows():
+        case_list.append(row['Case'])
+
+    # Extracts case titles into a list
+    title_cases = pd.read_excel(
+        filename,
+        sheet_name="Loads - Load Case Titles",
+        usecols="B",
+        header=1,
+        skiprows=[2]
+    )
+
+    case_title_list = []
+    for index, row in title_cases.iterrows():
+        case_title_list.append(row['Title'])
+
+    # Create load_cases_df
+    load_cases_df = pd.DataFrame({'Case': case_list, 'Title': case_title_list})
+
+    # Extracts number of nodes into a list
+    number_nodes = pd.read_excel(
+        filename,
+        sheet_name="Structure - Nodes",
+        usecols="A",
+        header=0,
+        skiprows=[1]
+    )
+
+    node_list = []
+    for index, row in number_nodes.iterrows():
+        node_list.append(row['Node'])
+
+    # Dictionary to store DataFrames for each load case
+    loads_dict = {}
+
+    for load_case in case_list:
+        key = f'Case_{load_case}'
+        loads_dict[key] = pd.read_excel(filename,
+                                        sheet_name=f"... Forces and Moments - Case {load_case}",
+                                        header=[1],
+                                        skiprows=[2]
+                                        )
+
+    for load_case, df in loads_dict.items():
+        # Replace NaN values in the 'Memb' column with forward fill
+        df['Memb'] = df['Memb'].ffill()
+
+        # Update the DataFrame in the dictionary
+        loads_dict[load_case] = df
+
+    # loads_dict['Case_2']
+    number_members_nodes = pd.read_excel(
+        filename,
+        sheet_name="Structure - Members",
+        usecols="A,F,G",
+        header=1,
+        skiprows=[2]
+    )
+
+    # Dictionary to store results
+    node_members_dict = {}
+
+    # Loop through nodes
+    for node in node_list:
+        # Filter rows
+        filtered_rows = number_members_nodes[(number_members_nodes['Node A'] == node) | (
+            number_members_nodes['Node B'] == node)]
+
+        # Extract unique members
+        unique_members = filtered_rows['Memb'].unique().tolist()
+
+        # Add to dictionary
+        node_members_dict[f'Node_{node}'] = unique_members
+
+    # Create a new DataFrame to store values
+    result_df = pd.DataFrame()
+
+    # Iterate through rows of the original DataFrame
+    for load_case, df in loads_dict.items():
+        for index, row in df.iterrows():
+            node = int(row['Node'])
+            memb = int(row['Memb'])
+
+            # Check if the combination of 'Node' and 'Memb' is present in the dictionary
+            key = f'Node_{node}'
+            if key in node_members_dict and memb in node_members_dict[key]:
+
+                # Extract specific values and add them to the result DataFrame
+                values = row[['Node', 'Memb', 'Force', 'Shear',
+                              'Shear.1', 'Torsion', 'Moment', 'Moment.1']].tolist()
+                values.append(load_case)
+
+                # Lookup the case title and append it to the values
+                case_title = load_cases_df.loc[load_cases_df["Case"] == int(
+                    load_case.split("_")[1]), "Title"].iloc[0]
+                values.append(case_title)
+
+                result_df = pd.concat([result_df, pd.DataFrame([values], columns=['Node No.', 'Member No.', 'Axial Force', 'Y-Axis Shear',
+                                                                                  'Z-Axis Shear', 'X-Axis Torsion', 'Y-Axis Moment', 'Z-Axis Moment', 'Load Case', 'LC Title'])], ignore_index=True)
+
+    # Drop the index column
+    result_df = result_df.reset_index(drop=True)
+
+    # Sort dataframe by nodes
+    result_df = result_df.sort_values(
+        by=['Node No.', 'Load Case', 'Member No.'])
+
+    # Display the result DataFrame
+    return result_df
+
+
+# Function to handle download on button click
+
+
+def download_excel(data_frame):
+    # Create a BytesIO buffer to store the Excel file
+    excel_buffer = BytesIO()
+
+    # Use the pandas to_excel function to write the DataFrame to the buffer
+    data_frame.to_excel(excel_buffer, index=False)
+
+    # Set up Streamlit to download the buffer as a file
+    st.download_button(
+        label="Download Excel File",
+        # key="download_button",
+        # on_click=download_excel,
+        # args=(data_frame,),
+        data=excel_buffer,
+        file_name="SGLoadsExtract.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+# Streamlit app
+
+
+def main():
+    st.title("SpaceGass Excel Processing App for Connection Design")
+    st.subheader("Version 0.1")
+
+    st.caption("Created by: Tanmay Vegad (Contact for any issues)")
+
+    # File upload
+    uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx", "xls"])
+
+    if uploaded_file is not None:
+        st.success("File uploaded successfully!")
+
+        # Process the uploaded file
+        result_df = process_excel(uploaded_file)
+
+        # Display the result DataFrame
+        st.write(result_df)
+
+        # Download button
+        download_excel(result_df)
+
+
+if __name__ == "__main__":
+    main()
