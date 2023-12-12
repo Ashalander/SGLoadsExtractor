@@ -58,11 +58,28 @@ def process_excel(file):
 
     for load_case in case_list:
         key = f'Case_{load_case}'
-        loads_dict[key] = pd.read_excel(filename,
-                                        sheet_name=f"... Forces and Moments - Case {load_case}",
-                                        header=[1],
-                                        skiprows=[2]
-                                        )
+
+        # Iterate through sheets to find the one ending with "Case {load_case}"
+        found_sheet = None
+        for sheet_name in pd.ExcelFile(filename).sheet_names:
+            if sheet_name.endswith(f"Case {load_case}"):
+                found_sheet = sheet_name
+                break
+
+        if found_sheet:
+            # Read the Excel sheet dynamically
+            loads_dict[key] = pd.read_excel(filename,
+                                            sheet_name=found_sheet,
+                                            header=[1],
+                                            skiprows=[2])
+        else:
+            print(f"Sheet for Case {load_case} not found!")
+
+        # loads_dict[key] = pd.read_excel(filename,
+        #                                 sheet_name=f"... Forces and Moments - Case {load_case}",
+        #                                 header=[1],
+        #                                 skiprows=[2]
+        #                                 )
 
     for load_case, df in loads_dict.items():
         # Replace NaN values in the 'Memb' column with forward fill
