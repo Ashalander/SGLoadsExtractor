@@ -62,7 +62,7 @@ def process_excel(file):
         # Iterate through sheets to find the one ending with "Case {load_case}"
         found_sheet = None
         for sheet_name in pd.ExcelFile(filename).sheet_names:
-            if sheet_name.endswith(f"Case {load_case}"):
+            if sheet_name.endswith(f"and Moments - Case {load_case}"):
                 found_sheet = sheet_name
                 break
 
