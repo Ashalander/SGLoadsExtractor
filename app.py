@@ -9,7 +9,7 @@ def process_excel(file):
 
     pd.set_option('display.max_rows', None)
 
-    filename = "Test Model for TV.xlsx"
+    filename = file
 
     # Extracts case number into a list
     number_cases = pd.read_excel(
