@@ -189,7 +189,7 @@ def download_excel(data_frame):
 
 def main():
     st.title("SpaceGass Excel Processing App for Connection Design")
-    st.subheader("Version 0.3")
+    st.subheader("Version 0.3.1")
 
     st.caption("Created by: Emmanuel Domingo (Contact for any issues)")
 
