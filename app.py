@@ -117,7 +117,7 @@ def process_excel(file):
             number_members_nodes['Node B'] == node)]
         
         # Filter rows to list only nodes within the structure and to ignore nodes that are meant for reactions
-        filtered_rows_struct_only = filtered_rows[(node_reactions_dict['Node A'] != node) | (node_reactions_dict['Node b'] != node) ]
+        filtered_rows_struct_only = filtered_rows[(node_reactions_dict['Node A'] != node) | (node_reactions_dict['Node B'] != node) ]
         
         # Extract unique members
         unique_members = filtered_rows['Memb'].unique().tolist()
