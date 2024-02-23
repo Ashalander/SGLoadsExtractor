@@ -1,3 +1,4 @@
+
 import pandas as pd
 import streamlit as st
 from io import BytesIO
@@ -190,7 +191,7 @@ def main():
     st.title("SpaceGass Excel Processing App for Connection Design")
     st.subheader("Version 0.2")
 
-    st.caption("Created by: Tanmay Vegad (Contact for any issues)")
+    st.caption("Created by: Emmanuel Domingo (Contact for any issues)")
 
     # File upload
     uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx", "xls"])
