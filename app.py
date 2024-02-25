@@ -5,12 +5,11 @@ from io import BytesIO
 
 # Function to process the uploaded file and generate the result DataFrame
 
-
 def process_excel(file):
 
     pd.set_option('display.max_rows', None)
 
-    filename = file
+    filename = "Frame_Trial.xlsx"
 
     # Extracts case number into a list
     number_cases = pd.read_excel(
@@ -34,6 +33,7 @@ def process_excel(file):
         skiprows=[2]
     )
 
+    # Iterates through "Title" (Titles)
     case_title_list = []
     for index, row in title_cases.iterrows():
         case_title_list.append(row['Title'])
@@ -67,6 +67,7 @@ def process_excel(file):
                 found_sheet = sheet_name
                 break
 
+        # Loads the excel sheet into a dataframe
         if found_sheet:
             # Read the Excel sheet dynamically
             loads_dict[key] = pd.read_excel(filename,
@@ -83,7 +84,7 @@ def process_excel(file):
         #                                 )
 
     for load_case, df in loads_dict.items():
-        # Replace NaN values in the 'Memb' column with forward fill
+        # Replace NaN values in the 'Memb' column with forward fill; fills blank spaces with previous value by index
         df['Memb'] = df['Memb'].ffill()
 
         # Update the DataFrame in the dictionary
@@ -106,29 +107,35 @@ def process_excel(file):
         header=1,
         skiprows=[2]
     )
-    
+
+    # Creates boolean mask that checks if Nodes in the Reaction are 
+    mask = number_members_nodes['Node A'].isin(node_reactions_dict['Node']) | number_members_nodes['Node B'].isin(node_reactions_dict['Node'])
+
+    # Inverts the mask
+    mask = ~mask
+
+    # Overwrites the previous dataframe and removes Reaction Nodes
+    number_members_nodes = number_members_nodes[mask]
+
     # Dictionary to store results
     node_members_dict = {}
 
     # Loop through nodes
     for node in node_list:
-        # Filter rows
-        filtered_rows = number_members_nodes[(number_members_nodes['Node A'] == node) | (
-            number_members_nodes['Node B'] == node)]
-        
-        # Filter rows to list only nodes within the structure and to ignore nodes that are meant for reactions
-        filtered_rows_struct_only = filtered_rows[(node_reactions_dict['Node A'] != node) | (node_reactions_dict['Node B'] != node) ]
-        
-        # Extract unique members
+        # Filter rows to list only rows where Node A or B is equal to node in for loop
+        filtered_rows = number_members_nodes[(number_members_nodes['Node A'] == node) | (number_members_nodes['Node B'] == node)]
+
+        # Extract unique members and converts to a list for corresponding node
         unique_members = filtered_rows['Memb'].unique().tolist()
 
-        # Add to dictionary
+        # Add to dictionary where each key is a node and has unique members related to that node
         node_members_dict[f'Node_{node}'] = unique_members
 
     # Create a new DataFrame to store values
     result_df = pd.DataFrame()
 
     # Iterate through rows of the original DataFrame
+    # First for loop gets the key-value pairs of the dictionary, and the embedded for loop goes thru the dataframe related to the key
     for load_case, df in loads_dict.items():
         for index, row in df.iterrows():
             node = int(row['Node'])
@@ -160,7 +167,6 @@ def process_excel(file):
 
     # Display the result DataFrame
     return result_df
-
 
 # Function to handle download on button click
 
