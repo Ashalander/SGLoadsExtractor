@@ -9,7 +9,7 @@ def process_excel(file):
 
     pd.set_option('display.max_rows', None)
 
-    filename = file
+    filename = "Frame_Trial.xlsx"
 
     # Extracts case number into a list
     number_cases = pd.read_excel(
@@ -108,15 +108,6 @@ def process_excel(file):
         skiprows=[2]
     )
 
-    # Creates boolean mask that checks if Nodes in the Reaction are 
-    mask = number_members_nodes['Node A'].isin(node_reactions_dict['Node']) | number_members_nodes['Node B'].isin(node_reactions_dict['Node'])
-
-    # Inverts the mask
-    mask = ~mask
-
-    # Overwrites the previous dataframe and removes Reaction Nodes
-    number_members_nodes = number_members_nodes[mask]
-
     # Dictionary to store results
     node_members_dict = {}
 
@@ -155,6 +146,12 @@ def process_excel(file):
                     load_case.split("_")[1]), "Title"].iloc[0]
                 values.append(case_title)
 
+                mask = values['Node'].isin(node_reactions_dict['Node'])
+
+                mask = ~mask
+
+                values = values[mask]
+
                 result_df = pd.concat([result_df, pd.DataFrame([values], columns=['Node No.', 'Member No.', 'Axial Force', 'Y-Axis Shear',
                                                                                   'Z-Axis Shear', 'X-Axis Torsion', 'Y-Axis Moment', 'Z-Axis Moment', 'Load Case', 'LC Title'])], ignore_index=True)
 
@@ -167,6 +164,7 @@ def process_excel(file):
 
     # Display the result DataFrame
     return result_df
+
 
 # Function to handle download on button click
 
