@@ -288,8 +288,6 @@ def download_excel(df1, df2):
 
     df2.to_excel(excel_buffer,  index=False, sheet_name="Reaction Loads")
 
-    writer.save()
-
     # Set up Streamlit to download the buffer as a file
     st.download_button(
         label="Download Excel File",
