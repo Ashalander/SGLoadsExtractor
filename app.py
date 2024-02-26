@@ -305,13 +305,8 @@ def download_excel(df1, df2):
 
 
 def main():
-
-    df1 = process_excel()
-    df2 = process_reactions()
-    
     st.title("SpaceGass Excel Processing App for Connection Design")
     st.subheader("Version 0.3.1")
-
     st.caption("Created by: Emmanuel Domingo (Contact for any issues)")
 
     # File upload
@@ -325,7 +320,10 @@ def main():
         df2 = process_reactions(uploaded_file)
 
         # Display the result DataFrame
+        st.write("Beam End-to-End Loads:")
         st.write(df1)
+        
+        st.write("Reaction Loads:")
         st.write(df2)
 
         # Download button
