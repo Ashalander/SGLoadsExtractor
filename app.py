@@ -283,11 +283,10 @@ def download_excel(df1, df2):
     excel_buffer = BytesIO()
 
     # Use the pandas to_excel function to write the DataFrame to the buffer
-    writer = pd.ExcelWriter(excel_buffer, engine='xlsxwriter')
     
-    df1.to_excel(writer, index=False, sheet_name="Beam End-to-End Loads")
+    df1.to_excel(excel_buffer, index=False, sheet_name="Beam End-to-End Loads")
 
-    df2.to_excel(writer,  index=False, sheet_name="Reaction Loads")
+    df2.to_excel(excel_buffer,  index=False, sheet_name="Reaction Loads")
 
     writer.save()
 
