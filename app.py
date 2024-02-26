@@ -165,6 +165,8 @@ def process_excel(file):
 
 #################
 
+import pandas as pd
+
 def process_reactions(file):
     
     pd.set_option('display.max_rows', None)
@@ -209,7 +211,7 @@ def process_reactions(file):
         header=1,
         skiprows=[2]
     )
-
+    
     node_list = []
     for index, row in number_nodes.iterrows():
         node_list.append(row['Node'])
@@ -244,19 +246,22 @@ def process_reactions(file):
     # First for loop gets the key-value pairs of the dictionary, and the embedded for loop goes thru the dataframe related to the key
     for load_case, df in loads_dict.items():
         for index, row in df.iterrows():
-            node = int(row['Node'])
+            if str(row['Node']).isdigit():
+                node = int(row['Node'])
 
-            # Extract specific values and add them to the result DataFrame
-            values = row[['Node','Force', 'Shear', 'Shear.1', 'Torsion', 'Moment', 'Moment.1']].tolist()
-            values.append(load_case)
+                # Extract specific values and add them to the result DataFrame
+                values = row[['Node','Force', 'Force.1', 'Force.2', 'Moment', 'Moment.1', 'Moment.2']].tolist()
+                values.append(load_case)
 
-            # Lookup the case title and append it to the values
-            case_title = load_cases_df.loc[load_cases_df["Case"] == int(
-                load_case.split("_")[1]), "Title"].iloc[0]
-            values.append(case_title)
+                # Lookup the case title and append it to the values
+                case_title = load_cases_df.loc[load_cases_df["Case"] == int(
+                    load_case.split("_")[1]), "Title"].iloc[0]
+                values.append(case_title)
 
-            result_df = pd.concat([result_df, pd.DataFrame([values], columns=['Node No.', 'Axial Force', 'Y-Axis Shear',
+                result_df = pd.concat([result_df, pd.DataFrame([values], columns=['Node No.', 'Axial Force', 'Y-Axis Shear',
                                                                                   'Z-Axis Shear', 'X-Axis Torsion', 'Y-Axis Moment', 'Z-Axis Moment', 'Load Case', 'LC Title'])], ignore_index=True)
+            else:
+                continue #skip the row
    
     # Drop the index column
     result_df = result_df.reset_index(drop=True)
