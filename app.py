@@ -174,7 +174,7 @@ def download_excel(data_frame):
     excel_buffer = BytesIO()
 
     # Use the pandas to_excel function to write the DataFrame to the buffer
-    data_frame.to_excel(excel_buffer, index=False)
+    data_frame.to_excel(excel_buffer, index=False, sheet_name="Beam End-to-End Loads")
 
     # Set up Streamlit to download the buffer as a file
     st.download_button(
