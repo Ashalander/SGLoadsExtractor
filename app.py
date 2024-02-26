@@ -321,7 +321,8 @@ def main():
         st.success("File uploaded successfully!")
 
         # Process the uploaded file
-        result_df = process_excel(uploaded_file)
+        df1 = process_excel(uploaded_file)
+        df2 = process_reactions(uploaded_file)
 
         # Display the result DataFrame
         st.write(df1)
