@@ -163,16 +163,131 @@ def process_excel(file):
     # Display the result DataFrame
     return result_df
 
+#################
+
+def process_reactions(file):
+    
+    pd.set_option('display.max_rows', None)
+
+    filename = file
+
+    # Extracts case number into a list
+    number_cases = pd.read_excel(
+        filename,
+        sheet_name="Loads - Load Case Titles",
+        usecols="A",
+        header=1,
+        skiprows=[2]
+    )
+
+    case_list = []
+    for index, row in number_cases.iterrows():
+        case_list.append(row['Case'])
+
+    # Extracts case titles into a list
+    title_cases = pd.read_excel(
+        filename,
+        sheet_name="Loads - Load Case Titles",
+        usecols="B",
+        header=1,
+        skiprows=[2]
+    )
+
+    # Iterates through "Title" (Titles)
+    case_title_list = []
+    for index, row in title_cases.iterrows():
+        case_title_list.append(row['Title'])
+
+    # Create load_cases_df
+    load_cases_df = pd.DataFrame({'Case': case_list, 'Title': case_title_list})
+
+    # Extracts number of nodes into a list
+    number_nodes = pd.read_excel(
+        filename,
+        sheet_name="Structure - Node Restraints",
+        usecols="A",
+        header=1,
+        skiprows=[2]
+    )
+
+    # Filters the row to only output nodes
+    number_nodes = number_nodes[number_nodes['Node'].str.isnumeric()]
+
+    node_list = []
+    for index, row in number_nodes.iterrows():
+        node_list.append(row['Node'])
+
+    # Dictionary to store DataFrames for each load case
+    loads_dict = {}
+
+    for load_case in case_list:
+        key = f'Case_{load_case}'
+
+        # Iterate through sheets to find the one ending with "Case {load_case}"
+        found_sheet = None
+        for sheet_name in pd.ExcelFile(filename).sheet_names:
+            if sheet_name.endswith(f"Reactions - Case {load_case}"):
+                found_sheet = sheet_name
+                break
+
+        # Loads the excel sheet into a dataframe
+        if found_sheet:
+            # Read the Excel sheet dynamically
+            loads_dict[key] = pd.read_excel(filename,
+                                            sheet_name=found_sheet,
+                                            header=[1],
+                                            skiprows=[2])
+        else:
+            print(f"Sheet for Case {load_case} not found!")
+
+    # Create a new DataFrame to store values
+    result_df = pd.DataFrame()
+
+    # Iterate through rows of the original DataFrame
+    # First for loop gets the key-value pairs of the dictionary, and the embedded for loop goes thru the dataframe related to the key
+    for load_case, df in loads_dict.items():
+        for index, row in df.iterrows():
+            node = int(row['Node'])
+
+            # Extract specific values and add them to the result DataFrame
+            values = row[['Node','Force', 'Shear', 'Shear.1', 'Torsion', 'Moment', 'Moment.1']].tolist()
+            values.append(load_case)
+
+            # Lookup the case title and append it to the values
+            case_title = load_cases_df.loc[load_cases_df["Case"] == int(
+                load_case.split("_")[1]), "Title"].iloc[0]
+            values.append(case_title)
+
+            result_df = pd.concat([result_df, pd.DataFrame([values], columns=['Node No.', 'Axial Force', 'Y-Axis Shear',
+                                                                                  'Z-Axis Shear', 'X-Axis Torsion', 'Y-Axis Moment', 'Z-Axis Moment', 'Load Case', 'LC Title'])], ignore_index=True)
+   
+    # Drop the index column
+    result_df = result_df.reset_index(drop=True)
+
+    # Sort dataframe by nodes
+    result_df = result_df.sort_values(by=['Node No.', 'Load Case'])
+
+    # Display the result DataFrame
+    return result_df
+
+#################
+
 
 # Function to handle download on button click
 
 
-def download_excel(data_frame):
+def download_excel(df1, df2):
     # Create a BytesIO buffer to store the Excel file
     excel_buffer = BytesIO()
 
     # Use the pandas to_excel function to write the DataFrame to the buffer
-    data_frame.to_excel(excel_buffer, index=False, sheet_name="Beam End-to-End Loads")
+    writer = pd.ExcelWriter(excel_buffer, engine='xlsxwriter')
+    
+    df1.to_excel(writer, index=False, sheet_name="Beam End-to-End Loads")
+
+    df2.to_excel(writer,  index=False, sheet_name="Reaction Loads")
+
+    writer.save()
 
     # Set up Streamlit to download the buffer as a file
     st.download_button(
@@ -190,6 +305,10 @@ def download_excel(data_frame):
 
 
 def main():
+
+    df1 = process_excel()
+    df2 = process_reactions()
+    
     st.title("SpaceGass Excel Processing App for Connection Design")
     st.subheader("Version 0.3.1")
 
@@ -205,10 +324,11 @@ def main():
         result_df = process_excel(uploaded_file)
 
         # Display the result DataFrame
-        st.write(result_df)
+        st.write(df1)
+        st.write(df2)
 
         # Download button
-        download_excel(result_df)
+        download_excel(df1, df2)
 
 
 if __name__ == "__main__":
