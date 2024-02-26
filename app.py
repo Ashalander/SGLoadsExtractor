@@ -148,12 +148,10 @@ def process_excel(file):
 
                 result_df = pd.concat([result_df, pd.DataFrame([values], columns=['Node No.', 'Member No.', 'Axial Force', 'Y-Axis Shear',
                                                                                   'Z-Axis Shear', 'X-Axis Torsion', 'Y-Axis Moment', 'Z-Axis Moment', 'Load Case', 'LC Title'])], ignore_index=True)
-
-    mask = result_df['Node No.'].isin(node_reactions_dict['Node'])
-
-    mask = ~mask
-
-    result_df = result_df[mask]
+    ## Hiding Nodes that are "Reactions Only" 
+    #mask = result_df['Node No.'].isin(node_reactions_dict['Node'])
+    #mask = ~mask
+    #result_df = result_df[mask]
     
     # Drop the index column
     result_df = result_df.reset_index(drop=True)
