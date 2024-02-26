@@ -146,15 +146,15 @@ def process_excel(file):
                     load_case.split("_")[1]), "Title"].iloc[0]
                 values.append(case_title)
 
-                mask = values['Node'].isin(node_reactions_dict['Node'])
-
-                mask = ~mask
-
-                values = values[mask]
-
                 result_df = pd.concat([result_df, pd.DataFrame([values], columns=['Node No.', 'Member No.', 'Axial Force', 'Y-Axis Shear',
                                                                                   'Z-Axis Shear', 'X-Axis Torsion', 'Y-Axis Moment', 'Z-Axis Moment', 'Load Case', 'LC Title'])], ignore_index=True)
 
+    mask = result_df['Node No.'].isin(node_reactions_dict['Node'])
+
+    mask = ~mask
+
+    result_df = result_df[mask]
+    
     # Drop the index column
     result_df = result_df.reset_index(drop=True)
 
