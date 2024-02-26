@@ -210,9 +210,6 @@ def process_reactions(file):
         skiprows=[2]
     )
 
-    # Filters the row to only output nodes
-    number_nodes = number_nodes[number_nodes['Node'].str.isnumeric()]
-
     node_list = []
     for index, row in number_nodes.iterrows():
         node_list.append(row['Node'])
