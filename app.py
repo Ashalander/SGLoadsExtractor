@@ -9,7 +9,7 @@ def process_excel(file):
 
     pd.set_option('display.max_rows', None)
 
-    filename = file
+    filename = "Frame_Trial.xlsx"
 
     # Extracts case number into a list
     number_cases = pd.read_excel(
@@ -99,14 +99,14 @@ def process_excel(file):
         skiprows=[2]
     )
 
-    # Dictonary for Nodal Reactions (Base Plates); these are to be used to ignore the nodes with restraints
-    node_reactions_dict= pd.read_excel(
-        filename,
-        sheet_name= "Structure - Node Restraints",
-        usecols="A",
-        header=1,
-        skiprows=[2]
-    )
+    ## Dictonary for Nodal Reactions (Base Plates); these are to be used to ignore the nodes with restraints
+    #node_reactions_dict= pd.read_excel(
+    #    filename,
+    #    sheet_name= "Structure - Node Restraints",
+    #    usecols="A",
+    #    header=1,
+     #   skiprows=[2]
+    #)
 
     # Dictionary to store results
     node_members_dict = {}
@@ -146,12 +146,37 @@ def process_excel(file):
                     load_case.split("_")[1]), "Title"].iloc[0]
                 values.append(case_title)
 
+
                 result_df = pd.concat([result_df, pd.DataFrame([values], columns=['Node No.', 'Member No.', 'Axial Force', 'Y-Axis Shear',
                                                                                   'Z-Axis Shear', 'X-Axis Torsion', 'Y-Axis Moment', 'Z-Axis Moment', 'Load Case', 'LC Title'])], ignore_index=True)
-    ## Hiding Nodes that are "Reactions Only" 
-    #mask = result_df['Node No.'].isin(node_reactions_dict['Node'])
-    #mask = ~mask
-    #result_df = result_df[mask]
+
+    ##Removes Reaction Loads
+    # mask = result_df['Node No.'].isin(node_reactions_dict['Node'])
+    # mask = ~mask
+    # result_df = result_df[mask]
+                
+    # loads_dict['Case_2']
+    beam_to_sect = pd.read_excel(
+        filename,
+        sheet_name="Structure - Members",
+        usecols="A,H",
+        header=1,
+        skiprows=[2]
+    )
+
+    sect_to_memb = pd.read_excel(
+        filename,
+        sheet_name="Structure - Section Properties",
+        usecols="A,B,C",
+        header=0,
+        skiprows=[1]
+    )
+                
+    memb_to_sect_mapping = pd.merge(beam_to_sect, sect_to_memb, on='Sect', how='left')
+
+    memb_to_sect_mapping= memb_to_sect_mapping.rename(columns={'Memb': 'Member No.'})
+
+    result_df = pd.merge(result_df, memb_to_sect_mapping, on='Member No.', how='left')
     
     # Drop the index column
     result_df = result_df.reset_index(drop=True)
