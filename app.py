@@ -155,7 +155,7 @@ def process_excel(file):
     # mask = ~mask
     # result_df = result_df[mask]
                 
-    # loads_dict['Case_2']
+    # Data Frame for Beam to Section
     beam_to_sect = pd.read_excel(
         filename,
         sheet_name="Structure - Members",
@@ -164,6 +164,7 @@ def process_excel(file):
         skiprows=[2]
     )
 
+    # Data Frame for Section to Name, and Mark
     sect_to_memb = pd.read_excel(
         filename,
         sheet_name="Structure - Section Properties",
@@ -171,12 +172,36 @@ def process_excel(file):
         header=0,
         skiprows=[1]
     )
-                
+
+
+    # Maps and merges the member to it's appropriate section            
     memb_to_sect_mapping = pd.merge(beam_to_sect, sect_to_memb, on='Sect', how='left')
 
     memb_to_sect_mapping= memb_to_sect_mapping.rename(columns={'Memb': 'Member No.'})
 
     result_df = pd.merge(result_df, memb_to_sect_mapping, on='Member No.', how='left')
+
+    # Moves the columns to middle
+    # Get a list of all the columns
+    cols = list(result_df.columns)
+
+    # Specify the columns you want to move and where you want to move them
+    cols_to_move = ['Sect', 'Name', 'Mark']
+    insert_after = 'Member No.'
+
+    # Find the index of the column after which you want to insert the other columns
+    idx = cols.index(insert_after)
+
+    # Remove the columns to move from the list
+    for col in cols_to_move:
+       cols.remove(col)
+
+    # Insert the columns at the correct position
+    for col in reversed(cols_to_move):
+        cols.insert(idx+1, col)
+
+    # Reindex the DataFrame
+    result_df = result_df[cols]
     
     # Drop the index column
     result_df = result_df.reset_index(drop=True)
@@ -187,7 +212,6 @@ def process_excel(file):
 
     # Display the result DataFrame
     return result_df
-
 #################
 
 import pandas as pd
