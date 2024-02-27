@@ -216,6 +216,7 @@ def process_excel(file):
 
     # Display the result DataFrame
     return result_df
+    
 #################
 
 import pandas as pd
