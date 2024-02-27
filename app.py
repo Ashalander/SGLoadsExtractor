@@ -182,13 +182,15 @@ def process_excel(file):
         how='left'
     )
 
+    # Rename Column to Section
+    result_df = result_df.rename(columns={'Name': 'Section Property','Sect': 'Section #'})
 
     # Moves the columns to middle
     # Get a list of all the columns
     cols = list(result_df.columns)
 
     # Specify the columns you want to move and where you want to move them
-    cols_to_move = ['Sect', 'Name', 'Mark']
+    cols_to_move = ['Section #', 'Section Property', 'Mark']
     insert_after = 'Member No.'
 
     # Find the index of the column after which you want to insert the other columns
