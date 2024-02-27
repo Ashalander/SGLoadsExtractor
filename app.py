@@ -175,11 +175,13 @@ def process_excel(file):
 
 
     # Maps and merges the member to it's appropriate section            
-    memb_to_sect_mapping = pd.merge(beam_to_sect, sect_to_memb, on='Sect', how='left')
+    result_df = pd.merge(
+        result_df,
+        pd.merge(beam_to_sect, sect_to_memb, on='Sect', how='left').rename(columns={'Memb': 'Member No.'}),
+        on='Member No.',
+        how='left'
+    )
 
-    memb_to_sect_mapping= memb_to_sect_mapping.rename(columns={'Memb': 'Member No.'})
-
-    result_df = pd.merge(result_df, memb_to_sect_mapping, on='Member No.', how='left')
 
     # Moves the columns to middle
     # Get a list of all the columns
