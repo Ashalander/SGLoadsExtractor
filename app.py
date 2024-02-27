@@ -327,7 +327,6 @@ def process_reactions(file):
 
 #################
 
-
 # Function to handle download on button click
 
 
