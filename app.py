@@ -399,7 +399,7 @@ def main():
     uploaded_file_excel = st.file_uploader("Upload Excel File", type=["xlsx", "xls"])
     uploaded_file_txt = st.file_uploader("Upload Excel File", type=[".txt"])
 
-    if uploaded_file_excel & uploaded_file_txt is not None:
+    if uploaded_file_excel and uploaded_file_txt is not None:
         st.success("File uploaded successfully!")
 
         # Process the uploaded file
