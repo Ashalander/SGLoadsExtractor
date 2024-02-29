@@ -354,6 +354,9 @@ def process_st_memb(file):
     # Renaming headers
     result_df.columns = ['Group'] + ['Member_' + str(i+1) for i in range(result_df.shape[1]-1)]
 
+    # Convert 'Group' to integer
+    result_df = result_df.map(lambda x: pd.to_numeric(x, errors='coerce'))
+
     # Fills NaN cells with a blank input
     result_df = result_df.fillna('')
 
