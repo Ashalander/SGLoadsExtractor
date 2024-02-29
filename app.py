@@ -372,7 +372,7 @@ def download_excel(df1, df2, df3):
     with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
         df1.to_excel(writer, index=False, sheet_name="Beam End-to-End Loads")
         df2.to_excel(writer, index=False, sheet_name="Reaction Loads")
-        df3.to_excel(writer, index=False, sheet_name='Steel Design Group/Members')
+        df3.to_excel(writer, index=False, sheet_name='Steel Design Group-Members')
 
     # Set up Streamlit to download the buffer as a file
     st.download_button(
