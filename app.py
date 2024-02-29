@@ -328,7 +328,7 @@ def process_reactions(file):
 
 #################
 
-def process_st_memb(file_path):
+def process_st_memb(file):
     # Open the file and read the content
     content = file.read().decode('utf-16')
 
