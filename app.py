@@ -330,8 +330,7 @@ def process_reactions(file):
 
 def process_st_memb(file_path):
     # Open the file and read the content
-    with open(file_path, 'r', encoding = 'utf-16') as file:
-        content = file.read()
+    content = file.read().decode('utf-16')
 
     # Find the start and end indices of the relevant section
     start_index = content.find("STEEL MEMBER DESIGN DATA (m)")
