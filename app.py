@@ -1,6 +1,6 @@
-
 import pandas as pd
 import streamlit as st
+import re
 from io import BytesIO
 
 # Function to process the uploaded file and generate the result DataFrame
@@ -328,10 +328,44 @@ def process_reactions(file):
 
 #################
 
+def process_st_memb(file_path):
+    # Open the file and read the content
+    with open(file_path, 'r', encoding = 'utf-16') as file:
+        content = file.read()
+
+    # Find the start and end indices of the relevant section
+    start_index = content.find("STEEL MEMBER DESIGN DATA (m)")
+    end_index = content.find("AS4100:2020 STEEL MEMBER DESIGN NOTES")
+
+    # Extract the relevant section
+    relevant_section = content[start_index:end_index].strip()
+
+    # Find all occurrences of 'Group' and 'Member list' in the relevant section
+    matches = re.findall(r'Group:\s*(\d+)\s*Member list:\s*([\d,]+)', relevant_section)
+
+    # Create a dataframe from the matches
+    result_df= pd.DataFrame(matches, columns=['Group', 'Member List'])
+
+    # Separate the members into it's own column
+    result_df['Member List'] = result_df['Member List'].str.split(',')
+    
+    # Create a new DataFrame that includes the 'Group' column and the split 'Member List' columns
+    result_df = pd.concat([result_df['Group'], result_df['Member List'].apply(pd.Series)], axis=1)
+
+    # Renaming headers
+    result_df.columns = ['Group'] + ['Member_' + str(i+1) for i in range(result_df.shape[1]-1)]
+
+    # Fills NaN cells with a blank input
+    result_df = result_df.fillna('')
+
+    return result_df
+
+#################
+
 # Function to handle download on button click
 
 
-def download_excel(df1, df2):
+def download_excel(df1, df2, df3):
     # Create a BytesIO buffer to store the Excel file
     excel_buffer = BytesIO()
 
@@ -339,6 +373,7 @@ def download_excel(df1, df2):
     with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
         df1.to_excel(writer, index=False, sheet_name="Beam End-to-End Loads")
         df2.to_excel(writer, index=False, sheet_name="Reaction Loads")
+        df3.to_excel(writer, index=False, sheet_name='Steel Design Group/Members')
 
     # Set up Streamlit to download the buffer as a file
     st.download_button(
@@ -361,15 +396,17 @@ def main():
     st.caption("Created by: Emmanuel Domingo (Contact for any issues)")
 
     # File upload
-    uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx", "xls"])
+    uploaded_file_excel = st.file_uploader("Upload Excel File", type=["xlsx", "xls"])
+    uploaded_file_txt = st.file_uploader("Upload Excel File", type=[".txt"])
 
-    if uploaded_file is not None:
+    if uploaded_file_excel & uploaded_file_txt is not None:
         st.success("File uploaded successfully!")
 
         # Process the uploaded file
-        df1 = process_excel(uploaded_file)
-        df2 = process_reactions(uploaded_file)
-
+        df1 = process_excel(uploaded_file_excel)
+        df2 = process_reactions(uploaded_file_excel)
+        df3 = process_st_memb(uploaded_file_txt)
+    
         # Display the result DataFrame
         st.write("Beam End-to-End Loads:")
         st.write(df1)
@@ -377,8 +414,11 @@ def main():
         st.write("Reaction Loads:")
         st.write(df2)
 
+        st.write("Steel Design Member Groups / Members")
+        st.write(df3)
+
         # Download button
-        download_excel(df1, df2)
+        download_excel(df1, df2, df3)
 
 
 if __name__ == "__main__":
