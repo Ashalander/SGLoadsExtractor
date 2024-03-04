@@ -388,6 +388,47 @@ def download_excel(df1, df2, df3):
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 
+#################
+
+def process_connect(df1, df2, file):
+
+    pd.set_option('display.max_rows', None)
+
+    filename = file
+
+    number_members_nodes = pd.read_excel(
+    filename,
+    sheet_name="Structure - Members",
+    usecols="A,F,G",
+    header=1,
+    skiprows=[2]
+    )
+
+    # Create a dictionary from df1 for quick lookup
+    start_node_dict = number_members_nodes.set_index('Memb')['Node A'].to_dict()
+    end_node_dict = number_members_nodes.set_index('Memb')['Node B'].to_dict()
+
+    # Create 'Start Node' and 'End Node' columns in df2
+    df2['Start Node'] = df2['Start Member'].map(start_node_dict)
+    df2['End Node'] = df2['End Member'].map(end_node_dict)
+
+    df2 = df2[['Group', 'Start Member', 'Start Node', 'End Member', 'End Node']]
+
+    return df2
+
+#################
+
+def filter_end(df1, df2):
+    # Create a mask where 'Start Member' and 'Start Node' match 'Member No.' and 'Node No' in df1
+    # and 'End Member' and 'End Node' match 'Member No.' and 'Node No' in df1
+    mask = df1[['Member No.', 'Node No.']].apply(tuple, axis=1).isin(df2[['Start Member', 'Start Node']].apply(tuple, axis=1)) | df1[['Member No.', 'Node No.']].apply(tuple, axis=1).isin(df2[['End Member', 'End Node']].apply(tuple, axis=1))
+    
+    # Apply the mask to df1
+    df1_filtered = df1[mask]
+
+    return df1_filtered
+    
+#################
 
 # Streamlit app
 
@@ -408,10 +449,14 @@ def main():
         df1 = process_excel(uploaded_file_excel)
         df2 = process_reactions(uploaded_file_excel)
         df3 = process_st_memb(uploaded_file_txt)
-    
+
+        beam_end_df = process_connect(df1,df2,uploaded_file_excel)
+
+        df4 = filter_end(df1,beam_end_df)
+
         # Display the result DataFrame
         st.write("Beam End-to-End Loads:")
-        st.write(df1)
+        st.write(df4)
         
         st.write("Reaction Loads:")
         st.write(df2)
@@ -420,7 +465,7 @@ def main():
         st.write(df3)
 
         # Download button
-        download_excel(df1, df2, df3)
+        download_excel(df4, df2, df3)
 
 
 if __name__ == "__main__":
