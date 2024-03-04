@@ -360,7 +360,16 @@ def process_st_memb(file):
     # Fills NaN cells with a blank input
     result_df = result_df.fillna('')
 
-    return result_df
+    # Create a new dataframe with the required columns
+    result_df_start_end = pd.DataFrame()
+    result_df_start_end['Group'] = result_df['Group']
+    result_df_start_end['Start Member'] = result_df['Member_1']
+    result_df_start_end['End Member'] = result_df.iloc[:, 2:].apply(lambda row: row[row != ''].values[-1], axis=1)
+
+    # Remove the decimal zero from the 'End Member' column
+    result_df_start_end['End Member'] = result_df_start_end['End Member'].apply(lambda x: int(x) if x == int(x) else x)
+
+    return result_df_start_end
 
 #################
 
@@ -412,9 +421,11 @@ def process_connect(df1, file):
     df1['Start Node'] = df1['Start Member'].map(start_node_dict)
     df1['End Node'] = df1['End Member'].map(end_node_dict)
 
-    df1 = df1[['Group', 'Start Member', 'Start Node', 'End Member', 'End Node']]
+    result_df = df1[['Group', 'Start Member', 'Start Node', 'End Member', 'End Node']]
 
-    return df1
+    result_df = result_df.fillna('')
+
+    return result_df
 
 #################
 
@@ -450,6 +461,7 @@ def main():
         df2 = process_reactions(uploaded_file_excel)
         df3 = process_st_memb(uploaded_file_txt)
 
+        # F
         beam_end_df = process_connect(df3,uploaded_file_excel)
 
         df4 = filter_end(df1,beam_end_df)
