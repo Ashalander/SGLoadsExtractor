@@ -450,7 +450,7 @@ def main():
         df2 = process_reactions(uploaded_file_excel)
         df3 = process_st_memb(uploaded_file_txt)
 
-        beam_end_df = process_connect(df1,df2,uploaded_file_excel)
+        beam_end_df = process_connect(df1,df3,uploaded_file_excel)
 
         df4 = filter_end(df1,beam_end_df)
 
