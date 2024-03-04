@@ -390,7 +390,7 @@ def download_excel(df1, df2, df3):
 
 #################
 
-def process_connect(df1, df2, file):
+def process_connect(df1, file):
 
     pd.set_option('display.max_rows', None)
 
@@ -409,12 +409,12 @@ def process_connect(df1, df2, file):
     end_node_dict = number_members_nodes.set_index('Memb')['Node B'].to_dict()
 
     # Create 'Start Node' and 'End Node' columns in df2
-    df2['Start Node'] = df2['Start Member'].map(start_node_dict)
-    df2['End Node'] = df2['End Member'].map(end_node_dict)
+    df1['Start Node'] = df1['Start Member'].map(start_node_dict)
+    df1['End Node'] = df1['End Member'].map(end_node_dict)
 
-    df2 = df2[['Group', 'Start Member', 'Start Node', 'End Member', 'End Node']]
+    df1 = df1[['Group', 'Start Member', 'Start Node', 'End Member', 'End Node']]
 
-    return df2
+    return df1
 
 #################
 
@@ -450,7 +450,7 @@ def main():
         df2 = process_reactions(uploaded_file_excel)
         df3 = process_st_memb(uploaded_file_txt)
 
-        beam_end_df = process_connect(df1,df3,uploaded_file_excel)
+        beam_end_df = process_connect(df3,uploaded_file_excel)
 
         df4 = filter_end(df1,beam_end_df)
 
