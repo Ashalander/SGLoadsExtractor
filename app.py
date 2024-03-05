@@ -330,6 +330,10 @@ def process_reactions(file):
 
 def process_st_memb(file):
     # Open the file and read the content
+
+    pd.set_option('display.max_rows', None)
+
+    
     content = file.read().decode('utf-16')
 
     # Find the start and end indices of the relevant section
@@ -339,23 +343,27 @@ def process_st_memb(file):
     # Extract the relevant section
     relevant_section = content[start_index:end_index].strip()
 
-    # Find all occurrences of 'Group' and 'Member list' in the relevant section
-    matches = re.findall(r'Group:\s*(\d+)\s*Member list:\s*([\d,]+)', relevant_section)
+    # Find all occurrences of 'Group', 'Member list', and 'End' in the relevant section
+    matches = re.findall(r'Group:\s*(\d+)\s*(.*?),\s*(.*?),\s*(.*?)$\s*Member list:\s*([\d,]+)', relevant_section, re.MULTILINE)
 
     # Create a dataframe from the matches
-    result_df= pd.DataFrame(matches, columns=['Group', 'Member List'])
+    result_df= pd.DataFrame(matches, columns=['Group', 'Type', 'End_A', 'End_B', 'Member List'])
+
+    # Remove the '\r' from the 'End_A' and 'End_B' columns
+    result_df['End_A'] = result_df['End_A'].str.replace('\r', '')
+    result_df['End_B'] = result_df['End_B'].str.replace('\r', '')
 
     # Separate the members into it's own column
     result_df['Member List'] = result_df['Member List'].str.split(',')
-    
+
     # Create a new DataFrame that includes the 'Group' column and the split 'Member List' columns
-    result_df = pd.concat([result_df['Group'], result_df['Member List'].apply(pd.Series)], axis=1)
+    result_df = pd.concat([result_df[['Group', 'Type', 'End_A', 'End_B']], result_df['Member List'].apply(pd.Series)], axis=1)
 
     # Renaming headers
-    result_df.columns = ['Group'] + ['Member_' + str(i+1) for i in range(result_df.shape[1]-1)]
+    result_df.columns = ['Group', 'Type', 'End_A', 'End_B'] + ['Member_' + str(i+1) for i in range(result_df.shape[1]-4)]
 
     # Convert 'Group' to integer
-    result_df = result_df.map(lambda x: pd.to_numeric(x, errors='coerce'))
+    result_df['Group'] = result_df['Group'].map(lambda x: pd.to_numeric(x, errors='coerce'))
 
     # Fills NaN cells with a blank input
     result_df = result_df.fillna('')
@@ -363,13 +371,16 @@ def process_st_memb(file):
     # Create a new dataframe with the required columns
     result_df_start_end = pd.DataFrame()
     result_df_start_end['Group'] = result_df['Group']
-    result_df_start_end['Start Member'] = result_df['Member_1']
-    result_df_start_end['End Member'] = result_df.iloc[:, 2:].apply(lambda row: row[row != ''].values[-1], axis=1)
+    result_df_start_end['Type'] = result_df['Type']
+    result_df_start_end['End_A'] = result_df['End_A']
+    result_df_start_end['End_B'] = result_df['End_B']
+    result_df_start_end['Member_1'] = result_df['Member_1']
+    result_df_start_end['Member_2'] = result_df.iloc[:, 5:].apply(lambda row: row[row != ''].values[-1] if row[row != ''].values[-1] != '' else None, axis=1)
 
     # Remove the decimal zero from the 'End Member' column
-    result_df_start_end['End Member'] = result_df_start_end['End Member'].apply(lambda x: int(x) if x == int(x) else x)
+    result_df_start_end['Member_2'] = result_df_start_end['Member_2'].apply(lambda x: int(x) if x is not None else None)
 
-    return result_df_start_end
+return result_df_start_end
 
 #################
 
@@ -413,17 +424,122 @@ def process_connect(df1, file):
     skiprows=[2]
     )
 
-    # Create a dictionary from df1 for quick lookup
-    start_node_dict = number_members_nodes.set_index('Memb')['Node A'].to_dict()
-    end_node_dict = number_members_nodes.set_index('Memb')['Node B'].to_dict()
+    node_coord = pd.read_excel(
+    filename,
+    sheet_name="Structure - Nodes",
+    usecols="A,B,C,D",
+    header=0,
+    skiprows=[1]
+    )
 
-    # Create 'Start Node' and 'End Node' columns in df2
-    df1['Start Node'] = df1['Start Member'].map(start_node_dict)
-    df1['End Node'] = df1['End Member'].map(end_node_dict)
+    # Creates a Dictionary of Member to Node
+    member_to_node_A_dict = dict(zip(number_members_nodes['Memb'],number_members_nodes['Node A']))
+    member_to_node_B_dict = dict(zip(number_members_nodes['Memb'],number_members_nodes['Node B']))
 
-    result_df = df1[['Group', 'Start Member', 'Start Node', 'End Member', 'End Node']]
+    # Creates a Dictionary of Node to Coordinates
+    nodes_dict = node_coord.set_index('Node')[['X','Y','Z']].T.to_dict()
 
-    result_df = result_df.fillna('')
+    # Error Fixing; converting objects into int64
+    df1['Member_1'] = pd.to_numeric(df1['Member_1'], errors = "coerce")
+    df1['Member_2'] = pd.to_numeric(df1['Member_2'], errors = "coerce")
+
+    # Map the Members to the Nodes
+    df1['Member_1_A'] = df1['Member_1'].map(member_to_node_A_dict)
+    df1['Member_1_B'] = df1['Member_1'].map(member_to_node_B_dict)
+    df1['Member_2_A'] = df1['Member_2'].map(member_to_node_A_dict)
+    df1['Member_2_B'] = df1['Member_2'].map(member_to_node_B_dict)
+
+    # Map the Coordinates for Each Node
+    df1['Member_1_A_Coord'] = df1['Member_1_A'].map(nodes_dict)
+    df1['Member_1_B_Coord'] = df1['Member_1_B'].map(nodes_dict)
+    df1['Member_2_A_Coord'] = df1['Member_2_A'].map(nodes_dict)
+    df1['Member_2_B_Coord'] = df1['Member_2_B'].map(nodes_dict)
+
+
+    df2 = df1[['Group', 'Member_1', 'Member_1_A','Member_1_A_Coord','Member_1_B','Member_1_B_Coord', 'Member_2','Member_2_A','Member_2_A_Coord', 'Member_2_B','Member_2_B_Coord', 'End_A', 'End_B','Type']]
+
+    print(df2)
+
+    # Function to check distances between two coordinates
+    def euclidean_distance(coord1,coord2):
+        return np.sqrt(sum((coord1[axis] - coord2[axis]) ** 2 for axis in ['X', 'Y', 'Z']))
+    
+    # Initialize a list for results
+    nodes_pairs = []
+
+
+    # Determines which nodes are the furthest from the data set.
+    for _, row in df1.iterrows():
+        # Get coordinates for Member 1 A and B
+        coord_1a = row['Member_1_A_Coord']
+        coord_1b = row['Member_1_B_Coord']
+    
+        # Get coordinates for Member 2 A and B
+        coord_2a = row['Member_2_A_Coord']
+        coord_2b = row['Member_2_B_Coord']
+
+        # Calculate distances between all combinations of nodes
+        distances = [
+        euclidean_distance(coord_1a, coord_2a),
+        euclidean_distance(coord_1a, coord_2b),
+        euclidean_distance(coord_1b, coord_2a),
+        euclidean_distance(coord_1b, coord_2b)
+        ]
+
+        # Find the maximum distance and corresponding nodes for this row
+        max_distance = max(distances)
+
+        # Determine which nodes have the maximum distance
+        if max_distance == distances[0]:
+            max_nodes = ('Member_1_A', 'Member_2_A')
+        elif max_distance == distances[1]:
+            max_nodes = ('Member_1_A', 'Member_2_B')
+        elif max_distance == distances[2]:
+            max_nodes = ('Member_1_B', 'Member_2_A')
+        else:
+            max_nodes = ('Member_1_B', 'Member_2_B')
+
+        # Append the result for this row
+        nodes_pairs.append(max_nodes)
+
+    print(nodes_pairs)
+
+    # Initialize an empty DataFrame for the result
+    result_df = pd.DataFrame(columns=['Group', 'Start Member', 'Start Node', 'End Member', 'End Node'])
+
+    # Iterate over the node pairs
+    for i, (start_node, end_node) in enumerate(nodes_pairs):
+        # Get the start and end members
+        start_member = df1.loc[i, 'Member_1']
+        end_member = df1.loc[i, 'Member_2']
+        
+        # Get the start and end nodes
+        start_node_value = df1.loc[i, start_node]
+        end_node_value = df1.loc[i, end_node]
+
+        # Get Type of Member
+        type = df1.loc[i, 'Type']
+
+        # Get the End Connections
+        end_type_A = df1.loc[i, 'End_A']
+        end_type_B = df1.loc[i, 'End_B']
+        
+        # Get the group
+        group = df1.loc[i, 'Group']
+        
+        # Append the row to the result DataFrame
+        row_to_append = pd.DataFrame({
+            'Group': [group],
+            'Start Member': [start_member],
+            'Start Node': [start_node_value],
+            'Start Connection': [end_type_A],
+            'End Member': [end_member],
+            'End Node': [end_node_value],
+            'End Connection': [end_type_B]
+        })
+        result_df = pd.concat([result_df, row_to_append], ignore_index=True)
+
+        result_df = result_df[['Group', 'Start Member', 'Start Node', 'Start Connection', 'End Member', 'End Node', 'End Connection' ]]
 
     return result_df
 
