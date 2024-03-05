@@ -380,7 +380,7 @@ def process_st_memb(file):
     # Remove the decimal zero from the 'End Member' column
     result_df_start_end['Member_2'] = result_df_start_end['Member_2'].apply(lambda x: int(x) if x is not None else None)
 
-return result_df_start_end
+    return result_df_start_end
 
 #################
 
