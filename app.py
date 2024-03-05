@@ -459,8 +459,6 @@ def process_connect(df1, file):
 
     df2 = df1[['Group', 'Member_1', 'Member_1_A','Member_1_A_Coord','Member_1_B','Member_1_B_Coord', 'Member_2','Member_2_A','Member_2_A_Coord', 'Member_2_B','Member_2_B_Coord', 'End_A', 'End_B','Type']]
 
-    print(df2)
-
     # Function to check distances between two coordinates
     def euclidean_distance(coord1,coord2):
         return np.sqrt(sum((coord1[axis] - coord2[axis]) ** 2 for axis in ['X', 'Y', 'Z']))
@@ -502,8 +500,6 @@ def process_connect(df1, file):
 
         # Append the result for this row
         nodes_pairs.append(max_nodes)
-
-    print(nodes_pairs)
 
     # Initialize an empty DataFrame for the result
     result_df = pd.DataFrame(columns=['Group', 'Start Member', 'Start Node', 'End Member', 'End Node'])
