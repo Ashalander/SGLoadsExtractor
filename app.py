@@ -549,10 +549,15 @@ def process_connect(df1, file):
 def filter_end(df1, df2):
     # Create a mask where 'Start Member' and 'Start Node' match 'Member No.' and 'Node No' in df1
     # and 'End Member' and 'End Node' match 'Member No.' and 'Node No' in df1
-    mask = df1[['Member No.', 'Node No.']].apply(tuple, axis=1).isin(df2[['Start Member', 'Start Node']].apply(tuple, axis=1)) | df1[['Member No.', 'Node No.']].apply(tuple, axis=1).isin(df2[['End Member', 'End Node']].apply(tuple, axis=1))
+    mask_start = df1[['Member No.', 'Node No.']].apply(tuple, axis=1).isin(df2[['Start Member', 'Start Node']].apply(tuple, axis=1))
+    mask_end = df1[['Member No.', 'Node No.']].apply(tuple, axis=1).isin(df2[['End Member', 'End Node']].apply(tuple, axis=1))
     
     # Apply the mask to df1
-    df1_filtered = df1[mask]
+    df1_filtered = df1[mask_start | mask_end]
+
+    # Add 'Connection Type' column
+    df1_filtered.loc[mask_start, 'Connection Type'] = 'Start Connection'
+    df1_filtered.loc[mask_end, 'Connection Type'] = 'End Connection'
 
     # Merge df1_filtered and df2 on the specified columns for 'Start Member' and 'Start Node'
     df1_filtered = df1_filtered.merge(df2[['Start Member', 'Start Node', 'Type']], how='left', left_on=['Member No.', 'Node No.'], right_on=['Start Member', 'Start Node'])
@@ -566,8 +571,6 @@ def filter_end(df1, df2):
     # Drop the unnecessary columns if they exist
     cols_to_drop = ['Start Member', 'Start Node', 'End Member', 'End Node', 'Type_start', 'Type_end']
     df1_filtered.drop(columns=[col for col in cols_to_drop if col in df1_filtered.columns], inplace=True)
-
-    return df1_filtered
     
     return df1_filtered
     
