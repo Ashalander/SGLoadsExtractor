@@ -375,12 +375,16 @@ def process_st_memb(file):
     result_df_start_end['End_A'] = result_df['End_A']
     result_df_start_end['End_B'] = result_df['End_B']
     result_df_start_end['Member_1'] = result_df['Member_1']
-    result_df_start_end['Member_2'] = result_df.iloc[:, 5:].apply(lambda row: row[row != ''].values[-1] if row[row != ''].values[-1] != '' else None, axis=1)
+    result_df_start_end['Member_2'] = result_df.iloc[:, 5:].apply(lambda row: row[row != ''].values[-1] if len(row[row != '']) > 0 else None, axis=1)
 
     # Remove the decimal zero from the 'End Member' column
     result_df_start_end['Member_2'] = result_df_start_end['Member_2'].apply(lambda x: int(x) if x is not None else None)
 
+    # New line to fill NaN values in 'Member_2' with values from 'Member_1'
+    result_df_start_end['Member_2'] = result_df_start_end['Member_2'].fillna(result_df_start_end['Member_1'])
+
     return result_df_start_end
+
 
 #################
 
