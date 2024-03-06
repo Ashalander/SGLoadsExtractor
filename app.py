@@ -550,6 +550,9 @@ def filter_end(df1, df2):
     # Apply the mask to df1
     df1_filtered = df1[mask]
 
+    # Merge df1_filtered and df2 on the specified columns
+    df1_filtered = df1_filtered.merge(df2[['Start Member', 'Start Node', 'End Member', 'End Node', 'Type']], how='left', left_on=['Member No.', 'Node No.'], right_on=['Start Member', 'Start Node'])
+    
     return df1_filtered
     
 #################
