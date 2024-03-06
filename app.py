@@ -526,6 +526,7 @@ def process_connect(df1, file):
         # Append the row to the result DataFrame
         row_to_append = pd.DataFrame({
             'Group': [group],
+            'Type': [type],
             'Start Member': [start_member],
             'Start Node': [start_node_value],
             'Start Connection': [end_type_A],
@@ -535,7 +536,7 @@ def process_connect(df1, file):
         })
         result_df = pd.concat([result_df, row_to_append], ignore_index=True)
 
-        result_df = result_df[['Group', 'Start Member', 'Start Node', 'Start Connection', 'End Member', 'End Node', 'End Connection' ]]
+        result_df = result_df[['Group', 'Type','Start Member', 'Start Node', 'Start Connection', 'End Member', 'End Node', 'End Connection' ]]
 
     return result_df
 
