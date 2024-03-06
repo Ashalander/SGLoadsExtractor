@@ -553,11 +553,14 @@ def filter_end(df1, df2):
     # Merge df1_filtered and df2 on the specified columns
     df1_filtered = df1_filtered.merge(df2[['Start Member', 'Start Node', 'End Member', 'End Node', 'Type']], how='left', left_on=['Member No.', 'Node No.'], right_on=['Start Member', 'Start Node'])
 
-    # Merge df1_filtered and df2 on the specified columns
-    df1_filtered = df1_filtered.merge(df2[['Start Member', 'Start Node', 'End Member', 'End Node', 'Type']], how='left', left_on=['Member No.', 'Node No.'], right_on=['End Member', 'End Node'])
+    # Merge df1_filtered and df2 on the specified columns for 'End Member' and 'End Node'
+    df1_filtered = df1_filtered.merge(df2[['End Member', 'End Node', 'Type']], how='left', left_on=['Member No.', 'Node No.'], right_on=['End Member', 'End Node'], suffixes=('_start', '_end'))
+
+    # Combine the 'Type_start' and 'Type_end' columns into a single 'Type' column
+    df1_filtered['Type'] = df1_filtered['Type_start'].combine_first(df1_filtered['Type_end'])
 
     # Drop the unnecessary columns
-    df1_filtered.drop(['Start Member', 'Start Node', 'End Member', 'End Node'], axis=1, inplace=True)
+    df1_filtered.drop(['Start Member', 'Start Node', 'End Member', 'End Node', 'Type_start', 'Type_end'], axis=1, inplace=True)
     
     return df1_filtered
     
