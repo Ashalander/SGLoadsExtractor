@@ -552,6 +552,9 @@ def filter_end(df1, df2):
 
     # Merge df1_filtered and df2 on the specified columns
     df1_filtered = df1_filtered.merge(df2[['Start Member', 'Start Node', 'End Member', 'End Node', 'Type']], how='left', left_on=['Member No.', 'Node No.'], right_on=['Start Member', 'Start Node'])
+
+    # Drop the unnecessary columns
+    df1_filtered.drop(['Start Member', 'Start Node'], axis=1, inplace=True)
     
     return df1_filtered
     
