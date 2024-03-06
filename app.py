@@ -613,7 +613,7 @@ def main():
         st.write(beam_end_df)
 
         # Download button
-        download_excel(df4, df2, df3)
+        download_excel(df4, df2, beam_end_df)
 
 
 if __name__ == "__main__":
