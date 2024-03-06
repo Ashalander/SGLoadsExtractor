@@ -333,7 +333,6 @@ def process_st_memb(file):
     # Open the file and read the content
 
     pd.set_option('display.max_rows', None)
-
     
     content = file.read().decode('utf-16')
 
@@ -587,7 +586,7 @@ def main():
         st.write(df2)
 
         st.write("Steel Design Member Groups / Members")
-        st.write(df3)
+        st.write(beam_end_df)
 
         # Download button
         download_excel(df4, df2, df3)
