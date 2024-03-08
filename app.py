@@ -6,54 +6,39 @@ from io import BytesIO
 
 # Function to process the uploaded file and generate the result DataFrame
 
-def process_excel(file):
+def process_excel(file, df2):
 
     pd.set_option('display.max_rows', None)
 
     filename = file
 
+    # Read the entire Excel file once
+    xls = pd.ExcelFile(filename)
+
     # Extracts case number into a list
     number_cases = pd.read_excel(
-        filename,
+        xls,
         sheet_name="Loads - Load Case Titles",
         usecols="A",
         header=1,
         skiprows=[2]
     )
 
-    case_list = []
-    for index, row in number_cases.iterrows():
-        case_list.append(row['Case'])
+    case_list = number_cases['Case'].tolist()
 
     # Extracts case titles into a list
     title_cases = pd.read_excel(
-        filename,
+        xls,
         sheet_name="Loads - Load Case Titles",
         usecols="B",
         header=1,
         skiprows=[2]
     )
 
-    # Iterates through "Title" (Titles)
-    case_title_list = []
-    for index, row in title_cases.iterrows():
-        case_title_list.append(row['Title'])
+    case_title_list = title_cases['Title'].tolist()
 
     # Create load_cases_df
     load_cases_df = pd.DataFrame({'Case': case_list, 'Title': case_title_list})
-
-    # Extracts number of nodes into a list
-    number_nodes = pd.read_excel(
-        filename,
-        sheet_name="Structure - Nodes",
-        usecols="A",
-        header=0,
-        skiprows=[1]
-    )
-
-    node_list = []
-    for index, row in number_nodes.iterrows():
-        node_list.append(row['Node'])
 
     # Dictionary to store DataFrames for each load case
     loads_dict = {}
@@ -63,7 +48,7 @@ def process_excel(file):
 
         # Iterate through sheets to find the one ending with "Case {load_case}"
         found_sheet = None
-        for sheet_name in pd.ExcelFile(filename).sheet_names:
+        for sheet_name in xls.sheet_names:
             if sheet_name.endswith(f"and Moments - Case {load_case}"):
                 found_sheet = sheet_name
                 break
@@ -71,46 +56,48 @@ def process_excel(file):
         # Loads the excel sheet into a dataframe
         if found_sheet:
             # Read the Excel sheet dynamically
-            loads_dict[key] = pd.read_excel(filename,
+            loads_dict[key] = pd.read_excel(xls,
                                             sheet_name=found_sheet,
                                             header=[1],
                                             skiprows=[2])
         else:
             print(f"Sheet for Case {load_case} not found!")
 
-        # loads_dict[key] = pd.read_excel(filename,
-        #                                 sheet_name=f"... Forces and Moments - Case {load_case}",
-        #                                 header=[1],
-        #                                 skiprows=[2]
-        #                                 )
+    # Replace NaN values in the 'Memb' column with forward fill; fills blank spaces with previous value by index
+    for df in loads_dict.values():
+        df.loc[:, 'Memb'] = df['Memb'].ffill()
 
-    for load_case, df in loads_dict.items():
-        # Replace NaN values in the 'Memb' column with forward fill; fills blank spaces with previous value by index
-        df['Memb'] = df['Memb'].ffill()
-
-        # Update the DataFrame in the dictionary
-        loads_dict[load_case] = df
+    # Filter loads_dict based on df2
+    for key, df in loads_dict.items():
+        start_condition = (df['Memb'].isin(df2['Start Member'].tolist())) & (df['Node'].isin(df2['Start Node'].tolist()))
+        end_condition = (df['Memb'].isin(df2['End Member'].tolist())) & (df['Node'].isin(df2['End Node'].tolist()))
+        loads_dict[key] = df[start_condition | end_condition]
 
     # loads_dict['Case_2']
     number_members_nodes = pd.read_excel(
-        filename,
+        xls,
         sheet_name="Structure - Members",
         usecols="A,F,G",
         header=1,
         skiprows=[2]
     )
 
-    ## Dictonary for Nodal Reactions (Base Plates); these are to be used to ignore the nodes with restraints
-    #node_reactions_dict= pd.read_excel(
-    #    filename,
-    #    sheet_name= "Structure - Node Restraints",
-    #    usecols="A",
-    #    header=1,
-     #   skiprows=[2]
-    #)
-
     # Dictionary to store results
     node_members_dict = {}
+
+    # Extracts number of nodes into a list
+    number_nodes = pd.read_excel(
+        xls,
+        sheet_name="Structure - Nodes",
+        usecols="A",
+        header=0,
+        skiprows=[1]
+    )
+
+    node_list = number_nodes['Node'].tolist()
+
+    # Filter node_list based on df2
+    node_list = [node for node in node_list if node in df2['Start Node'].tolist() or node in df2['End Node'].tolist()]
 
     # Loop through nodes
     for node in node_list:
@@ -150,15 +137,10 @@ def process_excel(file):
 
                 result_df = pd.concat([result_df, pd.DataFrame([values], columns=['Node No.', 'Member No.', 'Axial Force', 'Y-Axis Shear',
                                                                                   'Z-Axis Shear', 'X-Axis Torsion', 'Y-Axis Moment', 'Z-Axis Moment', 'Load Case', 'LC Title'])], ignore_index=True)
-
-    ##Removes Reaction Loads
-    # mask = result_df['Node No.'].isin(node_reactions_dict['Node'])
-    # mask = ~mask
-    # result_df = result_df[mask]
                 
     # Data Frame for Beam to Section
     beam_to_sect = pd.read_excel(
-        filename,
+        xls,
         sheet_name="Structure - Members",
         usecols="A,H",
         header=1,
@@ -167,7 +149,7 @@ def process_excel(file):
 
     # Data Frame for Section to Name, and Mark
     sect_to_memb = pd.read_excel(
-        filename,
+        xls,
         sheet_name="Structure - Section Properties",
         usecols="A,B,C",
         header=0,
@@ -388,32 +370,6 @@ def process_st_memb(file):
 
 #################
 
-# Function to handle download on button click
-
-
-def download_excel(df1, df2, df3):
-    # Create a BytesIO buffer to store the Excel file
-    excel_buffer = BytesIO()
-
-    # Use the pandas to_excel function to write the DataFrame to the buffer
-    with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-        df1.to_excel(writer, index=False, sheet_name="Beam End-to-End Loads")
-        df2.to_excel(writer, index=False, sheet_name="Reaction Loads")
-        df3.to_excel(writer, index=False, sheet_name='Steel Design Group-Members')
-
-    # Set up Streamlit to download the buffer as a file
-    st.download_button(
-        label="Download Excel File",
-        # key="download_button",
-        # on_click=download_excel,
-        # args=(data_frame,),
-        data=excel_buffer.getvalue(),
-        file_name="SGLoadsExtract.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-
-#################
-
 def process_connect(df1, file):
 
     pd.set_option('display.max_rows', None)
@@ -545,35 +501,58 @@ def process_connect(df1, file):
     return result_df
 
 #################
+# Function to handle download on button click
 
-def filter_end(df1, df2):
-    # Create a mask where 'Start Member' and 'Start Node' match 'Member No.' and 'Node No' in df1
-    # and 'End Member' and 'End Node' match 'Member No.' and 'Node No' in df1
-    mask_start = df1[['Member No.', 'Node No.']].apply(tuple, axis=1).isin(df2[['Start Member', 'Start Node']].apply(tuple, axis=1))
-    mask_end = df1[['Member No.', 'Node No.']].apply(tuple, axis=1).isin(df2[['End Member', 'End Node']].apply(tuple, axis=1))
+
+def download_excel(df1, df2, df3):
+    # Create a BytesIO buffer to store the Excel file
+    excel_buffer = BytesIO()
+
+    # Use the pandas to_excel function to write the DataFrame to the buffer
+    with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+        df1.to_excel(writer, index=False, sheet_name="Beam End-to-End Loads")
+        df2.to_excel(writer, index=False, sheet_name="Reaction Loads")
+        df3.to_excel(writer, index=False, sheet_name='Steel Design Group-Members')
+
+    # Set up Streamlit to download the buffer as a file
+    st.download_button(
+        label="Download Excel File",
+        # key="download_button",
+        # on_click=download_excel,
+        # args=(data_frame,),
+        data=excel_buffer.getvalue(),
+        file_name="SGLoadsExtract.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+#################
+
+##def filter_end(df1, df2):
+#   # Create a mask where 'Start Member' and 'Start Node' match 'Member No.' and 'Node No' in df1
+#    # and 'End Member' and 'End Node' match 'Member No.' and 'Node No' in df1
+#    mask_start = df1[['Member No.', 'Node No.']].apply(tuple, axis=1).isin(df2[['Start Member', 'Start Node']].apply(tuple, axis=1))
+#    mask_end = df1[['Member No.', 'Node No.']].apply(tuple, axis=1).isin(df2[['End Member', 'End Node']].apply(tuple, axis=1))
     
-    # Apply the mask to df1
-    df1_filtered = df1[mask_start | mask_end]
+#    # Apply the mask to df1
+#    df1_filtered = df1[mask_start | mask_end]
+#
+#    # Merge df1_filtered and df2 on the specified columns for 'Start Member' and 'Start Node'
+#    df1_filtered = df1_filtered.merge(df2[['Start Member', 'Start Node', 'Type', 'Start Connection']], how='left', left_on=['Member No.', 'Node No.'], right_on=['Start Member', 'Start Node'])
 
-    # Merge df1_filtered and df2 on the specified columns for 'Start Member' and 'Start Node'
-    df1_filtered = df1_filtered.merge(df2[['Start Member', 'Start Node', 'Type', 'Start Connection']], how='left', left_on=['Member No.', 'Node No.'], right_on=['Start Member', 'Start Node'])
+#    # Merge df1_filtered and df2 on the specified columns for 'End Member' and 'End Node'
+#    df1_filtered = df1_filtered.merge(df2[['End Member', 'End Node', 'Type', 'End Connection']], how='left', left_on=['Member No.', 'Node No.'], right_on=['End Member', 'End Node'], suffixes=('_start', '_end'))
 
-    # Merge df1_filtered and df2 on the specified columns for 'End Member' and 'End Node'
-    df1_filtered = df1_filtered.merge(df2[['End Member', 'End Node', 'Type', 'End Connection']], how='left', left_on=['Member No.', 'Node No.'], right_on=['End Member', 'End Node'], suffixes=('_start', '_end'))
+#    # Combine the 'Type_start' and 'Type_end' columns into a single 'Type' column
+#    df1_filtered['Type'] = df1_filtered['Type_start'].combine_first(df1_filtered['Type_end'])
 
-    # Combine the 'Type_start' and 'Type_end' columns into a single 'Type' column
-    df1_filtered['Type'] = df1_filtered['Type_start'].combine_first(df1_filtered['Type_end'])
+#    # Combine the 'Start Connection' and 'End Connection' columns into a single 'Connection Type' column
+#    df1_filtered['Connection Type'] = df1_filtered['Start Connection'].combine_first(df1_filtered['End Connection'])
 
-    # Combine the 'Start Connection' and 'End Connection' columns into a single 'Connection Type' column
-    df1_filtered['Connection Type'] = df1_filtered['Start Connection'].combine_first(df1_filtered['End Connection'])
-
-    # Drop the unnecessary columns if they exist
-    cols_to_drop = ['Start Member', 'Start Node', 'End Member', 'End Node', 'Start Connection', 'End Connection', 'Type_start', 'Type_end']
-    df1_filtered.drop(columns=[col for col in cols_to_drop if col in df1_filtered.columns], inplace=True)
+#    # Drop the unnecessary columns if they exist
+#    cols_to_drop = ['Start Member', 'Start Node', 'End Member', 'End Node', 'Start Connection', 'End Connection', 'Type_start', 'Type_end']
+#    df1_filtered.drop(columns=[col for col in cols_to_drop if col in df1_filtered.columns], inplace=True)
     
-    return df1_filtered
-
-
+#   return df1_filtered
     
 #################
 
@@ -593,27 +572,23 @@ def main():
         st.success("File uploaded successfully!")
 
         # Process the uploaded file
-        df1 = process_excel(uploaded_file_excel)
-        df2 = process_reactions(uploaded_file_excel)
-        df3 = process_st_memb(uploaded_file_txt)
-
-        # F
-        beam_end_df = process_connect(df3,uploaded_file_excel)
-
-        df4 = filter_end(df1,beam_end_df)
+        df1 = process_reactions(uploaded_file_excel)
+        df2 = process_st_memb(uploaded_file_txt)
+        df3 = process_connect(df3,uploaded_file_excel)
+        df4 = process_excel(uploaded_file_excel, df3)
 
         # Display the result DataFrame
         st.write("Beam End-to-End Loads:")
         st.write(df4)
         
         st.write("Reaction Loads:")
-        st.write(df2)
+        st.write(df1)
 
         st.write("Steel Design Member Groups / Members")
-        st.write(beam_end_df)
+        st.write(df3)
 
         # Download button
-        download_excel(df4, df2, beam_end_df)
+        download_excel(df4, df1, df3)
 
 
 if __name__ == "__main__":
