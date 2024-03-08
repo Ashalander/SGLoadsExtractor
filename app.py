@@ -574,7 +574,7 @@ def main():
         # Process the uploaded file
         df1 = process_reactions(uploaded_file_excel)
         df2 = process_st_memb(uploaded_file_txt)
-        df3 = process_connect(df3,uploaded_file_excel)
+        df3 = process_connect(df2,uploaded_file_excel)
         df4 = process_excel(uploaded_file_excel, df3)
 
         # Display the result DataFrame
